@@ -28,7 +28,7 @@ We decided to strictly use TCP because this game doesn't require human input, no
 
 The primary `Main.hs` code is as follows:
 
-<pre><code class="haskell">
+```haskell
 module Main where
 
 import           Control.Concurrent    (forkIO)
@@ -83,7 +83,7 @@ main = withSocketsDo $ do
       _ <- forkIO $ startListener internalPort maxInternalConns addClient server
       -- start server
       runWorld server
-</code></pre>
+```
 
 We'll break this down into simple to understand pieces.
 
@@ -91,7 +91,7 @@ The first section simply loads our `configurations.yml` which contains a large a
 
 We apparently need `withSocketsDo` if this code is to ever run on a Windows machine.
 
-<pre><code class="haskell">
+```haskell
 main :: IO ()
 main = withSocketsDo $ do
   -- load configurations
@@ -99,11 +99,11 @@ main = withSocketsDo $ do
   case configData of
     Left err ->
       print err
-</code></pre>
+```
 
 Upon successful YAML parsing the `Either`'s `Right` is evaluated and creates a new `Server` (to be defined later). It then runs the network listeners for the internal and external clients in their owns threads, and finally runs the game loop in the main thread.
 
-<pre><code class="haskell">
+```haskell
     Right configs -> do
       server <- newServer configs maxPlayers
       -- external client connections
@@ -112,11 +112,11 @@ Upon successful YAML parsing the `Either`'s `Right` is evaluated and creates a n
       _ <- forkIO $ startListener internalPort maxInternalConns addClient server
       -- start server
       runWorld server
-</code></pre>
+```
 
 The `startListener` function is designed to take a handler function with the signature `Server -> Socket -> IO()` and listen on the designated port for new client connections.  These new connections then get passed off to the `acceptClients` function.
 
-<pre><code class="haskell">
+```haskell
 startListener :: PortNumber -> Int -> (Server -> Socket -> IO ()) -> Server -> IO ()
 startListener port maxClients handler server = do
   sock <- socket AF_INET Stream defaultProtocol
@@ -124,18 +124,18 @@ startListener port maxClients handler server = do
   bindSocket sock $ SockAddrInet port iNADDR_ANY
   listen sock maxClients
   acceptClients handler server sock
-</code></pre>
+```
 
 New socket connections use the socket option `NoDelay 1` in order to disable the Nagle Algorithm and decrease network latency.  The handler then takes the newly connected socket and hands it off to the `Server` via the handler so it can map a connection to a `Client` entity, then the listener calls itself again and waits for the next incoming connection.
 
-<pre><code class="haskell">
+```haskell
 acceptClients :: (Server -> Socket -> IO ()) -> Server -> Socket -> IO ()
 acceptClients handler server sock = do
   (next, _) <- accept sock
   setSocketOption next NoDelay 1 -- disable nagle
   _ <- handler server next
   acceptClients handler server sock
-</code></pre>
+```
 
 ## Communication
 
@@ -143,7 +143,7 @@ The next step is to determine a communication strategy.  We've used [Google's Pr
 
 We handle message encoding/decoding with a couple simple functions. 
 
-<pre><code class="haskell">
+```haskell
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -175,7 +175,7 @@ messageOutWithIdAndLength msg =
     mid1 = BL.toStrict $ DB.encode (getMessageId msg)
     out  = messageOut msg
     len  = BL.toStrict $ DB.encode (fromIntegral (BS.length out) :: Int16)
-</code></pre>
+```
 
 We've chosen to make our messages 3 bytes at the very least.  The first byte denotes the message id, the second two bytes the size of the body of the message, and the remaining bytes the actual body if applicable.  We are unfortunately wasting 2 bytes in the case of a message that has no body, however, it means we don't have to pre-check what kind of message is being passed and avoid writing specific code to handle those exceptions.
 
@@ -183,7 +183,7 @@ The `messageOutWithIdAndLength` uses our handy `GameMessage` class to pull the p
 
 An example message looks something like this:
 
-<pre><code class="haskell">
+```haskell
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -205,13 +205,13 @@ instance Encode ClientActionLoginRequest
 instance Decode ClientActionLoginRequest
 instance GameMessage ClientActionLoginRequest where
   getMessageId _ = 200
-</code></pre>
+```
 
 And the relevant sections of code from `Server.hs` to send and receive messages.  I am using [io-streams](https://hackage.haskell.org/package/io-streams) which is a fantastically simple to use I/O library for processing streams.
 
 The `runClient` function runs in its own thread and handles the incoming data from the associated client connection. `UserId` is a unique identifier which associates the socket with a `Client` and their `Player` data.
 
-<pre><code class="haskell">
+```haskell
 -- receive messages
 runClient :: Server -> Socket -> UserId -> IO ()
 runClient server sock uid = do
@@ -232,7 +232,7 @@ sendMessage msg sock = do
   (_, outS) <- Streams.socketToStreams sock
   handle (\(SomeException e) -> traceIO $ show e ) $
     Streams.write (Just $ messageOutWithIdAndLength msg) outS
-</code></pre>
+```
 
 ## Conclusion
 

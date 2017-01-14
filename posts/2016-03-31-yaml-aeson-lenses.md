@@ -18,7 +18,7 @@ I was refactoring some [Armored Bits](https://armoredbits.com/) code over the la
 
 The initial yaml wasn't too terribly large.
 
-<pre><code class="yaml">
+```yaml
 server:
   ports:
     internal: 4000
@@ -34,11 +34,11 @@ game:
     configure: 5
     start: 5
     end: 300
-</code></pre>
+```
 
 The Haskell code to load this was a tad verbose but still somewhat manageable. I originally set it up to use the lens library so that I could easily drill into the structure with the original yaml field names, therefore manually defined all of the FromJSON instances instead of simply using Generics.
 
-<pre><code class="haskell">
+```haskell
 -- File: ServerConfig.hs
 
 {-# LANGUAGE OverloadedStrings #-}
@@ -138,13 +138,13 @@ instance FromJSON Config where
                           <$> (v .: "server")
                           <*> (v .: "game")
   parseJSON _ = error "Can't parse Config from YAML/JSON"
-</code></pre>
+```
 
 ## Adding More Fields: Ughhh
 
 Then things got a little out of hand. I added all of the fields we needed to experiment with various mech configurations:
 
-<pre><code class="yaml">
+```yaml
 server:
   ports:
     internal: 4000
@@ -215,7 +215,7 @@ game:
         armor: Armor Type A
       - model: Leg Type A
         armor: Armor Type A
-</code></pre>
+```
 
 No way was I going to write out all of those definitions in Haskell!
 
@@ -225,7 +225,7 @@ I decided that I wanted to use lenses to access this mess without all the boiler
 
 Instead of loading the target file as yaml and parsing the structure I simply changed it to load it all as a JSON `Value`.
 
-<pre><code class="haskell">
+```haskell
 -- Before
 loadServerConfig :: String -> IO Config
 loadServerConfig file = do
@@ -245,17 +245,17 @@ loadServerConfig file = do
       die "error loading confg.yml"
     Just config ->
       return config
-</code></pre>
+```
 
 And accessing the config fields changed to this:
 
-<pre><code class="haskell">
+```haskell
 -- Before
 (config ^. configServer . serverConnections . connectionsExternal)
 
 -- After
 (fromMaybe 10 (config ^? key "server" . key "connections" . key "external" . _Integral))
-</code></pre>
+```
 
 ## Conclusion
 

@@ -22,7 +22,7 @@ I'm a huge Haskell fan. If I wasn't working primarily on server infrastructure I
 
 For starters we need our Bake CI server. The project maintainer is still actively working on the project (currently v0.5), although there's not much in the way of examples on advanced usage and configuration yet. That said it's fairly trivial to chain actions together and use `cmd` to run what you want.
 
-<pre><code class="haskell">
+```haskell
 module Main where
 
 import Data.Monoid ((<>))
@@ -82,7 +82,7 @@ main = do
     ovenNotifyStdout $
     ovenTest (return allActions) execute
     defaultOven { ovenServer = ("127.0.0.1", 5000) }
-</code></pre>
+```
 
 There's not really much to discuss in regards to the above except that more functionality will be added in the future, specifically building and pushing new docker builds out to the development cluster. If all of the tests pass it will automatically merge into `master`, and the result published to our ChatWork build channel.
 
@@ -94,7 +94,7 @@ Next is the web hook server. Our company uses [https://bitbucket.org](https://bi
 
 Right now it only processes Push triggers which were applied to our `develop` branch.
 
-<pre><code class="haskell">
+```haskell
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
@@ -193,7 +193,7 @@ receiveBuild bb =
 
 main :: IO ()
 main = Warp.run 8080 $ serve buildApi server
-</code></pre>
+```
 
 There is some configuration cleanup that can go into this, but so far it does what it is supposed to which is simply ferrying the commit author and hash to the Bake server.
 
@@ -205,7 +205,7 @@ In order to connect all of the pieces of the puzzle together we use Docker conta
 
 ### Build Server Entrypoint
 
-<pre><code>
+```bash
 #!/bin/sh
 
 case "$BUILD_TYPE" in
@@ -218,7 +218,7 @@ case "$BUILD_TYPE" in
         /usr/local/bin/build-server server
         ;;
 esac
-</code></pre>
+```
 
 ### Build Server
 
@@ -226,7 +226,7 @@ Uses the stack-run docker container provided by FPComplete.
 
 This also pulls in all the requirements the server team needs so their Django app can be ran inside the container.
 
-<pre><code>
+```bash
 FROM fpco/stack-run
 MAINTAINER "Brian Jones" &lt;jones@my-company.com&gt;
 
@@ -251,11 +251,11 @@ RUN chmod +x /usr/local/bin/run.sh
 EXPOSE 5000
 
 ENTRYPOINT ["/usr/local/bin/run.sh"]
-</code></pre>
+```
 
 ### Hook Server
 
-<pre><code>
+```bash
 FROM fpco/stack-run
 MAINTAINER "Brian Jones" &lt;jones@my-company.com&gt;
 
@@ -265,7 +265,7 @@ ADD .stack-work/???/bin/build-hook /usr/local/bin/build-hook
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/build-hook"]
-</code></pre>
+```
 
 ## Kubernetes
 
@@ -275,7 +275,7 @@ For the record our cluster is built on top of AWS with the CoreOS team's [kube-a
 
 We use Kubernetes namespaces to keep our environments logically separated. I started by creating a namespace for our build system.
 
-<pre><code>
+```bash
 $ kubectl namespace create my-project-build
 $ kubectl get namespaces
 NAME                     STATUS    AGE
@@ -284,7 +284,7 @@ kube-system              Active    17d
 my-project-build         Active    1d
 my-project-development   Active    17d
 my-project-staging       Active    17d
-</code></pre>
+```
 
 ### Master Build and Hook Service
 
@@ -292,7 +292,7 @@ This defines two Kubernetes *service*s which run on port 5000 (build) and 8080 (
 
 One final thing to note is that it loads SSH keys into a container volume via Kubernetes *secrets*. We want to avoid baking them directly into our container so they can be quickly revoked and/or replaced.
 
-<pre><code>
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -350,18 +350,18 @@ spec:
             defaultMode: 256
       imagePullSecrets:
         - name: us-west-2-ecr-registry
-</code></pre>
+```
 
 The command for loading your project SSH keys into Kubernetes:
 
-<pre><code>
+```bash
 ssh-keyscan bitbucket.org >> /tmp/known_hosts
 kubectl --namespace build delete secret build-ssh-keys
 kubectl --namespace build create secret generic build-ssh-keys \
 	--from-file=id_rsa=tool/build-server/.ssh/tbs \
 	--from-file=id_rsa.pub=tool/build-server/.ssh/tbs.pub \
 	--from-file=known_hosts=/tmp/known_hosts
-</code></pre>
+```
 
 I add known_hosts this way so I don't have to bake them it into the docker container and can update them when I do a security audit.
 
@@ -375,7 +375,7 @@ The main thing to note is that we tie the Bake client container together with a 
 
 I use "127.0.0.1" instead of "localhost" for MySQL because it expects to be connecting to a socket if the latter is defined.
 
-<pre><code>
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -462,7 +462,7 @@ spec:
                 path: config-file.cnf
       imagePullSecrets:
         - name: us-west-2-ecr-registry
-</code></pre>
+```
 
 This service creates and maintains 4 build clients. As your commit volume and test time increases you can simply use kubectl commands to scale out and keep your developers happy.
 
@@ -477,7 +477,7 @@ First we need an *ingress controller* and a default backend for it. The followin
 
 And finally our actual *ingress* which routes domain names to our backend services.
 
-<pre><code>
+```yaml
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -498,14 +498,14 @@ spec:
         backend:
           serviceName: build-master
           servicePort: 8080
-</code></pre>
+```
 
 The last step is to expose this to the world behind a LoadBalancer.
 
-<pre><code>
+```bash
 $ kubectl --namespace toulove-build expose rc nginx-ingress-controller \
   --type=LoadBalancer --port=80 --target-port=80
-</code></pre>
+```
 
 In my specific case this makes an ELB on AWS, after which I lock it down with a Security Group which only allows access from my company and the bitbucket web hook IP range.
 

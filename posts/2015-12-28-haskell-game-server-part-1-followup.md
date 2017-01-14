@@ -20,7 +20,7 @@ In a completely unrelated debugging nightmare that is oddly related to this spec
 
 The following is the revised code:
 
-<pre><code class="haskell">
+```haskell
 runClient :: Server -> Client -> IO ()
 runClient server client = forever $ do
   (mid, msg) <- readMessage (client^.clientInput)
@@ -48,4 +48,4 @@ sendMessage msg out' = do
   outS <- Streams.lockingOutputStream out'
   handle (\(SomeException e) -> debug $ "write failed: " ++ show e ) $
     Streams.write (Just $ messageOutWithIdAndLength msg) outS
-</code></pre>
+```

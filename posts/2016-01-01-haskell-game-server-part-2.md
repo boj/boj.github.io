@@ -29,7 +29,7 @@ When the server is in the initial `ConfigureState` the player AI can configure t
 
 A configuration message may look something like this, where you simply define the documented model of a component to use:
 
-<pre><code class="haskell">
+```haskell
 data SlugConfigureWeaponMessage
   = SlugConfigureWeaponMessage {
       weaponModel    :: Required 1 (Value String)
@@ -37,7 +37,7 @@ data SlugConfigureWeaponMessage
     , ammoModel      :: Required 3 (Value String)
     }
   deriving (Generic, Show)
-</code></pre>
+```
 
 The server then processes these configuration messages and makes sure that the correct amount of overall weight is available to add these components, and that you can actually plug a component into its receiving component.  Internally we call this a component *protocol* which defines the receiving _sockets_ and incoming _plugs_ it can handle.  For example, a specific arm model may only receive a total of two weapons, one of which is ballistic, the other a beam weapon, with no limitations.  Another arm model may only accept one missile weapon from a specific list of manufacturers.  This gives us a lot of power to mix, match, and limit which components can plug into what.
 
@@ -47,7 +47,7 @@ The very last action taken is a `SlugConfigureDoneRequest` message which simply 
 
 Once the server is in the `GameState` the AI can then begin querying information about their robot.  Right now the primary query about one's robot is a large monolithic protobuf message.
 
-<pre><code class="haskell">
+```haskell
 data SlugGetQueryWarMachineResponse
   = SlugGetQueryWarMachineResponse {
       state          :: Required 1 (Value String)
@@ -70,7 +70,7 @@ data SlugGetQueryWarMachineResponse
     , legs           :: Repeated 18 (Message SlugQueryLegMessage)
     }
   deriving (Generic, Show)
-</code></pre>
+```
 
 Each `Message` gives further details about the additional components inside the robot, such as data acquired by sensors, the firing and ammunition state of a weapoon, etc.  The player AI can then react on these values by doing things such as moving, rotating, firing weapons, communicating with teammates, and much more.
 
@@ -82,7 +82,7 @@ As you can see we call our robots/mechs War Machines.
 
 Interacting with the actual war machine is done with very simple messages such as the following:
 
-<pre><code class="haskell">
+```haskell
 data SlugSetCommitEngineRequest
   = SlugSetCommitEngineRequest {
       state        :: Optional 1 (Value Int32)
@@ -98,7 +98,7 @@ data SlugSetCommitArmWeaponRequest
     , fireState      :: Optional 4 (Value Int32)
     }
   deriving (Generic, Show)
-</code></pre>
+```
 
 These allow the AI to change the state of a component (maybe they wish to power it down to utilize the additional reactor power for another component), and perform specific actions with the component.  In the above example setting the acceleration of the engine will begin moving the war machine.  Setting the fire state to `Reloading` will force the weapon to do a reload.
 
@@ -108,7 +108,7 @@ This is one of the more interesting parts of the game server where we break away
 
 We store all relevant data using `IntMap`s, although I'm not sure if there is a better way to store game objects of various types.  Currently it seems the best method is to just make a map for each data type, of which we only have a few.
 
-<pre><code class="haskell">
+```haskell
 type PlayerMap  = IntMap.IntMap Player
 type ChassisMap = IntMap.IntMap Chassis
 type AmmoMap    = IntMap.IntMap Ammo
@@ -125,11 +125,11 @@ data World
     }
 
 makeLenses ''World
-</code></pre>
+```
 
 The game loop looks like this:
 
-<pre><code class="haskell">
+```haskell
 {-# LANGUAGE BangPatterns #-}
 
 runWorld :: Server -> GameTime -> UTCTime -> IO ()
@@ -145,13 +145,13 @@ runWorld server !time before = do
   runWorld server next now
   where
     diffTime = (realToFrac .) . diffUTCTime
-</code></pre>
+```
 
 I use `BangPatterns` because I want to force the `next` time value to be evaluated each tick.  While profiling for an unrelated space leak it turns out `let next = time + dt` was causing a small heap space leak because there are cases where the time value never gets evaluated downstream for awhile.
 
 The main loop itself runs at about 60 updates per second.  This is good enough to smoothly move the simulation state forward and notify any listening external clients of the action going on.
 
-<pre><code class="haskell">
+```haskell
 iterateWorld :: Server -> GameTime -> DeltaTime -> STM Simulation
 iterateWorld server time dt = do
   world0 <- readTVar (server^.serverWorld)
@@ -159,20 +159,20 @@ iterateWorld server time dt = do
   let (world1, sim1) = runState (stepWorld time dt world0) sim0
   writeTVar (server^.serverWorld) world1
   return sim1
-</code></pre>
+```
 
 One of the more interesting problems we faced was how to get a bunch of simulation state updates generated deep inside game objects and get them to percolate back up to IO so we can send them out to external clients.  We handled this by utilizing the `State` monad with which we thread a `Simulation` data type through each `run*` function that collects all outgoing movement and rotation messages, as well as notifies the `World` that objects have spawned (such as a weapon firing a projectile), etc.
 
 The `World` iteration function is basically this:
 
-<pre><code class="haskell">
+```haskell
 stepWorld :: GameTime -> DeltaTime -> World -> MTL.State Simulation World
 stepWorld t dt world0 = do
   sim0 <- get
   -- a lot of processing steps happen here
   put sim1
   return world1
-</code></pre>
+```
 
 Where each component inside the world that gets iterated over is also passed the `Simulation` state so it can append any new messages to be acted upon.
 
@@ -182,7 +182,7 @@ The final topic of this post is about our `Actor` class.  This is quite useful f
 
 The code is so incredibly dense I'll post the entire thing here.
 
-<pre><code class="haskell">
+```haskell
 module Game.Actor where
 
 import           Linear
@@ -244,7 +244,7 @@ isColliding aA aB = do
   let cPa = getPosition aA
   let cPb = getPosition aB
   abs (distance (cPa^._xz) (cPb^._xz)) <= cAr + cBr && abs ((cPa^._y) - (cPb^._y)) <= cAh + cBh
-</code></pre>
+```
 
 Not all objects are created equal, so we provide more strict definitions of `Actor` as well.  A building will clearly not be `Moveable` nor `Rotatable`, while a base turret may be `Rotatable` but not `Moveable`.
 

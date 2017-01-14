@@ -7,7 +7,7 @@ This week was all over the board. Thursday was a national holiday in Japan, so I
 
 ## Time Breakdown
 
-```
+```bash
 #+BEGIN: clocktable :maxlevel 4 :block thisweek :scope <various>
 #+CAPTION: Clock summary at [2016-11-06 Sun 20:18], for week 2016-W44.
 | File             | Headline                      | Time       |       |       |      |

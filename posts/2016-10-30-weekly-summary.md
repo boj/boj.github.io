@@ -20,7 +20,7 @@ Starting somewhere during the middle of this week I decided to go back to using 
 
 ## Time Breakdown
 
-```
+```bash
 Clock summary at [2016-10-30 Sun 17:18], for week 2016-W43.
 
 | File             | Headline                        | Time    |      |      |      |

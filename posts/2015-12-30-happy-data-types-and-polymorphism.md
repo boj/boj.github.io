@@ -4,7 +4,7 @@ title: Happy Data Types & Polymorphism
 
 I am ridiculously proud of this little bit of code:
 
-<pre><code class="haskell">
+```haskell
 data Range a = Range a a
 
 between :: (Num a, Eq a, Ord a) => a -> Range a -> Bool
@@ -18,15 +18,15 @@ betweenr a (Range b c) = a > b && a <= c
 
 betweenBoth :: (Num a, Eq a, Ord a) => a -> Range a -> Bool
 betweenBoth a (Range b c) = a >= b && a <= c
-</code></pre>
+```
 
 Results in:
 
-<pre><code class="haskell">
+```haskell
 27.0 `between`     Range 15.0 40.0 => True
 90   `between`     Range 15   40   => False
 15   `betweenl`    Range 15   40   => True
 40.0 `betweenr`    Range 15.0 40.0 => True
 0.0  `betweenBoth` Range  0.0  1.0 => True
 2.0  `between`     Range  0.0  1.0 => False
-</code></pre>
+```

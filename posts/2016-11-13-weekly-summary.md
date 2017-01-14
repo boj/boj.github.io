@@ -7,7 +7,7 @@ This was an interesting week full of various technical achievements. Unfortunate
 
 ## Time Breakdown
 
-```
+```bash
 #+BEGIN: clocktable :maxlevel 4 :block thisweek :scope <various>
 #+CAPTION: Clock summary at [2016-11-13 Sun 23:29], for week 2016-W45.
 | File             | Headline                  | Time      |       |       |      |
@@ -47,13 +47,13 @@ While I do not recommend public consumption just yet, [Hack Slash](https://githu
 
 One of the more interesting things I did here was spend a little time getting the `HackM` monad working. This is quite simply a type synonym which wraps the `State` monad with a `Scene` and a polymorphic game type.
 
-<pre><code class="haskell">
+```haskell
 type HackM a = State Scene a
-</code></pre>
+```
 
 The game developer shouldn't have to worry about threading a `Scene` through their functions, which in the beginning I was doing until this new approach dawned on me. They can now use the new `HackM` monad which gives them access to `get` and `put` allowing them to grab and update the `Scene` only when desired.
 
-<pre><code class="haskell">
+```haskell
 -- old way
 oldNoSceneFunc :: GameLogic -> Scene -> (GameLogic, Scene) -- <-- terrible Scene threading
 oldNoSceneFunc logic scene = (doThingsToGameLogic logic, scene)
@@ -71,7 +71,7 @@ newSceneFunc logic0 = do
   scene0 <- get
   put $ doThingsToScene scene0
   return $ doThingsToGameLogic logic0
-</code></pre>
+```
 
 ### Armored Bits
 
